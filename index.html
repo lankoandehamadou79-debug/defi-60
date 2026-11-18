@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#10102a">
+<title>DÉFI 60 - Joue et défie tes amis</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#10102a;color:white;font-family:Arial,sans-serif}
+header{padding:22px 18px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:25px;font-weight:900;color:#a78bfa}
+.logo span{color:#fff}
+.points{background:#252448;padding:10px 14px;border-radius:20px;color:#facc15;font-weight:bold}
+main{max-width:650px;margin:auto;padding:12px 18px 40px}
+.hero{background:linear-gradient(135deg,#7139d9,#2563eb);padding:28px 22px;border-radius:25px;margin:10px 0 22px}
+.hero small{opacity:.85}
+h1{font-size:35px;margin:12px 0}
+.hero p{line-height:1.6;color:#eee}
+button{border:0;border-radius:14px;padding:15px 18px;font-size:16px;font-weight:bold;cursor:pointer}
+.primary{background:#facc15;color:#18132d;width:100%;margin-top:12px}
+.secondary{background:#302d55;color:white;width:100%;margin-top:10px}
+.section{font-size:20px;margin:24px 0 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:#201f40;border:1px solid #34315d;padding:18px;border-radius:18px}
+.tile b{display:block;margin-bottom:8px}
+.tile small{color:#bcb9d7}
+.card{background:#201f40;border:1px solid #34315d;padding:20px;border-radius:20px}
+.muted{color:#aaa8c5}
+.question{font-size:22px;line-height:1.4;margin:20px 0}
+.answer{display:block;width:100%;text-align:left;background:#302d55;color:white;margin:10px 0;border:1px solid #47416f}
+.answer:disabled{opacity:1}
+.correct{background:#126b4b!important;border-color:#36d399}
+.wrong{background:#852f43!important;border-color:#fb7185}
+.hidden{display:none!important}
+.progress{height:8px;background:#3b375f;border-radius:10px;overflow:hidden}
+.bar{height:100%;background:#a78bfa;width:0%;transition:.3s}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.player{padding:14px 4px;border-bottom:1px solid #383456}
+footer{text-align:center;color:#8582a5;padding:30px 10px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+ <div class="logo">DÉFI <span>60</span></div>
+ <div class="points">⭐ <span id="totalPoints">0</span> pts</div>
+</header>
+
+<main>
+<section id="home">
+ <div class="hero">
+  <small>🔥 LE DÉFI DU JOUR T'ATTEND</small>
+  <h1>Ton cerveau est-il prêt ?</h1>
+  <p>Réponds aux questions, accumule des points et défie tes amis. Chaque bonne réponse te rapproche du sommet !</p>
+  <button class="primary" onclick="startQuiz()">JOUER MAINTENANT →</button>
+ </div>
+
+ <h2 class="section">🎮 Découvre DÉFI 60</h2>
+ <div class="grid">
+  <div class="tile"><b>🧠 Quiz</b><small>Teste tes connaissances</small></div>
+  <div class="tile"><b>🏆 Classement</b><small>Progresse à chaque partie</small></div>
+  <div class="tile"><b>⚡ Défis</b><small>Défie tes amis</small></div>
+  <div class="tile"><b>⭐ Points</b><small>Récompense tes efforts</small></div>
+ </div>
+
+ <h2 class="section">🏆 Meilleurs scores sur cet appareil</h2>
+ <div class="card" id="leaderboard"></div>
+ <button class="secondary" onclick="shareApp()">📲 Inviter un ami</button>
+</section>
+
+<section id="game" class="hidden">
+ <div class="row">
+  <span id="questionNumber">Question 1/10</span>
+  <b>⭐ <span id="gamePoints">0</span></b>
+ </div>
+ <div class="progress"><div class="bar" id="progress"></div></div>
+ <div class="card" style="margin-top:20px">
+  <div class="muted" id="category">Culture générale</div>
+  <div class="question" id="questionText"></div>
+  <div id="answers"></div>
+  <p class="muted" id="feedback"></p>
+  <button class="primary hidden" id="nextBtn" onclick="nextQuestion()">Question suivante →</button>
+ </div>
+ <button class="secondary" onclick="goHome()">Quitter le quiz</button>
+</section>
+
+<section id="result" class="hidden">
+ <div class="card" style="text-align:center">
+  <div style="font-size:55px">🏆</div>
+  <h1>Bravo !</h1>
+  <p class="muted">Tu as terminé ton défi.</p>
+  <h1 style="color:#facc15"><span id="finalPoints">0</span> points</h1>
+  <p id="resultMessage"></p>
+  <button class="primary" onclick="shareScore()">Partager mon score</button>
+  <button class="secondary" onclick="startQuiz()">Rejouer</button>
+  <button class="secondary" onclick="goHome()">Accueil</button>
+ </div>
+</section>
+</main>
+
+<footer>DÉFI 60 · Joue. Défie. Apprends.</footer>
+
+<script>
+const questions=[
+{q:"Quelle est la capitale du Burkina Faso ?",a:["Bobo-Dioulasso","Ouagadougou","Koudougou","Dori"],c:1,cat:"Géographie"},
+{q:"Combien de jours compte une année normale ?",a:["360","365","366","364"],c:1,cat:"Culture générale"},
+{q:"Quelle planète est surnommée la planète rouge ?",a:["Vénus","Jupiter","Mars","Saturne"],c:2,cat:"Sciences"},
+{q:"Combien font 12 × 8 ?",a:["86","94","96","108"],c:2,cat:"Mathématiques"},
+{q:"Quel animal est le plus grand du monde ?",a:["Éléphant","Girafe","Baleine bleue","Requin"],c:2,cat:"Nature"},
+{q:"Quelle est la langue officielle du Brésil ?",a:["Espagnol","Portugais","Français","Anglais"],c:1,cat:"Langues"},
+{q:"Combien de côtés possède un hexagone ?",a:["5","6","7","8"],c:1,cat:"Mathématiques"},
+{q:"Quel organe pompe le sang dans le corps ?",a:["Poumon","Cerveau","Foie","Cœur"],c:3,cat:"Sciences"},
+{q:"Quel continent abrite le désert du Sahara ?",a:["Asie","Afrique","Europe","Amérique"],c:1,cat:"Géographie"},
+{q:"Combien de minutes y a-t-il dans une heure ?",a:["30","45","60","90"],c:2,cat:"Culture générale"}
+];
+
+let current=0,score=0,answered=false;
+let total=Number(localStorage.getItem("defi60points")||0);
+const $=id=>document.getElementById(id);
+
+function updatePoints(){
+ $("totalPoints").textContent=total;
+}
+function show(section){
+ ["home","game","result"].forEach(id=>$(id).classList.add("hidden"));
+ $(section).classList.remove("hidden");
+}
+function startQuiz(){
+ current=0;score=0;
+ $("gamePoints").textContent=0;
+ show("game");
+ renderQuestion();
+}
+function renderQuestion(){
+ answered=false;
+ const q=questions[current];
+ $("questionNumber").textContent=`Question ${current+1}/10`;
+ $("progress").style.width=((current+1)/10*100)+"%";
+ $("category").textContent="📚 "+q.cat;
+ $("questionText").textContent=q.q;
+ $("feedback").textContent="";
+ $("nextBtn").classList.add("hidden");
+ $("answers").innerHTML="";
+ q.a.forEach((answer,index)=>{
+  const btn=document.createElement("button");
+  btn.className="answer";
+  btn.textContent=String.fromCharCode(65+index)+". "+answer;
+  btn.onclick=()=>checkAnswer(index,btn);
+  $("answers").appendChild(btn);
+ });
+}
+function checkAnswer(index,btn){
+ if(answered)return;
+ answered=true;
+ const q=questions[current];
+ [...$("answers").children].forEach((b,i)=>{
+  b.disabled=true;
+  if(i===q.c)b.classList.add("correct");
+ });
+ if(index===q.c){
+  score+=10;
+  $("feedback").textContent="✅ Bonne réponse ! +10 points";
+ }else{
+  btn.classList.add("wrong");
+  $("feedback").textContent="❌ Pas tout à fait. La bonne réponse est : "+q.a[q.c];
+ }
+ $("gamePoints").textContent=score;
+ $("nextBtn").textContent=current===9?"Voir mon résultat →":"Question suivante →";
+ $("nextBtn").classList.remove("hidden");
+}
+function nextQuestion(){
+ current++;
+ if(current<questions.length){
+  renderQuestion();
+ }else{
+  finishQuiz();
+ }
+}
+function finishQuiz(){
+ total+=score;
+ localStorage.setItem("defi60points",total);
+ const history=JSON.parse(localStorage.getItem("defi60history")||"[]");
+ history.push({score,date:new Date().toLocaleDateString("fr-FR")});
+ history.sort((a,b)=>b.score-a.score);
+ localStorage.setItem("defi60history",JSON.stringify(history.slice(0,5)));
+ $("finalPoints").textContent=score;
+ $("resultMessage").textContent=score===100?"Incroyable ! Score parfait !":score>=70?"Excellent travail ! Continue !":score>=40?"Bien joué ! Tu progresses !":"Continue à t'entraîner, tu vas progresser !";
+ updatePoints();
+ show("result");
+ renderLeaderboard();
+}
+function renderLeaderboard(){
+ const history=JSON.parse(localStorage.getItem("defi60history")||"[]");
+ $("leaderboard").innerHTML=history.length?
+ history.map((h,i)=>`<div class="player row"><span>${["🥇","🥈","🥉","4️⃣","5️⃣"][i]} Défi ${i+1}<br><small class="muted">${h.date}</small></span><b>${h.score} pts</b></div>`).join("")
+ :'<p class="muted">Joue ton premier quiz pour apparaître ici !</p>';
+}
+function goHome(){
+ show("home");
+ renderLeaderboard();
+}
+function shareApp(){
+ const message="Découvre DÉFI 60 ! Joue au quiz et tente de battre mon score.";
+ if(navigator.share){
+  navigator.share({title:"DÉFI 60",text:message,url:location.href}).catch(()=>{});
+ }else{
+  window.open("https://wa.me/?text="+encodeURIComponent(message+" "+location.href),"_blank");
+ }
+}
+function shareScore(){
+ const message="Je viens de marquer "+score+" points sur DÉFI 60 ! Peux-tu faire mieux ?";
+ if(navigator.share){
+  navigator.share({title:"Mon score DÉFI 60",text:message,url:location.href}).catch(()=>{});
+ }else{
+  window.open("https://wa.me/?text="+encodeURIComponent(message+" "+location.href),"_blank");
+ }
+}
+updatePoints();
+renderLeaderboard();
+</script>
+</body>
+</html>
