@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -19,6 +18,7 @@ main{max-width:650px;margin:auto;padding:12px 18px 40px}
 h1{font-size:35px;margin:12px 0}
 .hero p{line-height:1.6;color:#eee}
 button{border:0;border-radius:14px;padding:15px 18px;font-size:16px;font-weight:bold;cursor:pointer}
+input{width:100%;padding:14px;margin:7px 0;border-radius:12px;border:1px solid #47416f;background:#171633;color:white;font-size:16px}
 .primary{background:#facc15;color:#18132d;width:100%;margin-top:12px}
 .secondary{background:#302d55;color:white;width:100%;margin-top:10px}
 .section{font-size:20px;margin:24px 0 12px}
@@ -39,6 +39,7 @@ button{border:0;border-radius:14px;padding:15px 18px;font-size:16px;font-weight:
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .player{padding:14px 4px;border-bottom:1px solid #383456}
 footer{text-align:center;color:#8582a5;padding:30px 10px;font-size:12px}
+.notice{font-size:14px;line-height:1.5;margin-top:10px;color:#fcd34d}
 </style>
 </head>
 <body>
@@ -46,7 +47,6 @@ footer{text-align:center;color:#8582a5;padding:30px 10px;font-size:12px}
  <div class="logo">DÉFI <span>60</span></div>
  <div class="points">⭐ <span id="totalPoints">0</span> pts</div>
 </header>
-
 <main>
 <section id="home">
  <div class="hero">
@@ -55,7 +55,19 @@ footer{text-align:center;color:#8582a5;padding:30px 10px;font-size:12px}
   <p>Réponds aux questions, accumule des points et défie tes amis. Chaque bonne réponse te rapproche du sommet !</p>
   <button class="primary" onclick="startQuiz()">JOUER MAINTENANT →</button>
  </div>
-
+ <h2 class="section">👤 Mon compte</h2>
+ <div class="card">
+  <div id="accountStatus" class="muted">Tu n'es pas connecté.</div>
+  <div id="authForms">
+   <input id="pseudo" type="text" maxlength="20" placeholder="Ton pseudo (pour l'inscription)">
+   <input id="email" type="email" autocomplete="email" placeholder="Ton adresse e-mail">
+   <input id="password" type="password" autocomplete="current-password" placeholder="Mot de passe (6 caractères minimum)">
+   <button class="primary" onclick="signUp()">Créer mon compte</button>
+   <button class="secondary" onclick="signIn()">Me connecter</button>
+  </div>
+  <button id="logoutBtn" class="secondary hidden" onclick="signOut()">Me déconnecter</button>
+  <p id="authMessage" class="notice" aria-live="polite"></p>
+ </div>
  <h2 class="section">🎮 Découvre DÉFI 60</h2>
  <div class="grid">
   <div class="tile"><b>🧠 Quiz</b><small>Teste tes connaissances</small></div>
@@ -63,17 +75,15 @@ footer{text-align:center;color:#8582a5;padding:30px 10px;font-size:12px}
   <div class="tile"><b>⚡ Défis</b><small>Défie tes amis</small></div>
   <div class="tile"><b>⭐ Points</b><small>Récompense tes efforts</small></div>
  </div>
-
- <h2 class="section">🏆 Meilleurs scores sur cet appareil</h2>
+ <h2 class="section">🏆 Classement mondial</h2>
+ <div class="card" id="globalLeaderboard"><p class="muted">Chargement du classement...</p></div>
+ <button class="secondary" onclick="loadGlobalLeaderboard()">Actualiser le classement</button>
+ <h2 class="section">🏅 Mes meilleurs scores sur cet appareil</h2>
  <div class="card" id="leaderboard"></div>
  <button class="secondary" onclick="shareApp()">📲 Inviter un ami</button>
 </section>
-
 <section id="game" class="hidden">
- <div class="row">
-  <span id="questionNumber">Question 1/10</span>
-  <b>⭐ <span id="gamePoints">0</span></b>
- </div>
+ <div class="row"><span id="questionNumber">Question 1/10</span><b>⭐ <span id="gamePoints">0</span></b></div>
  <div class="progress"><div class="bar" id="progress"></div></div>
  <div class="card" style="margin-top:20px">
   <div class="muted" id="category">Culture générale</div>
@@ -84,24 +94,27 @@ footer{text-align:center;color:#8582a5;padding:30px 10px;font-size:12px}
  </div>
  <button class="secondary" onclick="goHome()">Quitter le quiz</button>
 </section>
-
 <section id="result" class="hidden">
  <div class="card" style="text-align:center">
-  <div style="font-size:55px">🏆</div>
-  <h1>Bravo !</h1>
+  <div style="font-size:55px">🏆</div><h1>Bravo !</h1>
   <p class="muted">Tu as terminé ton défi.</p>
   <h1 style="color:#facc15"><span id="finalPoints">0</span> points</h1>
   <p id="resultMessage"></p>
+  <p id="saveMessage" class="notice"></p>
   <button class="primary" onclick="shareScore()">Partager mon score</button>
   <button class="secondary" onclick="startQuiz()">Rejouer</button>
   <button class="secondary" onclick="goHome()">Accueil</button>
  </div>
 </section>
 </main>
-
 <footer>DÉFI 60 · Joue. Défie. Apprends.</footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL = "https://ziavrpoztvnekuudqeqb.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_dwoqF_hqaEqh7VgFjVJHeQ_0cNhl7n2";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
 const questions=[
 {q:"Quelle est la capitale du Burkina Faso ?",a:["Bobo-Dioulasso","Ouagadougou","Koudougou","Dori"],c:1,cat:"Géographie"},
 {q:"Combien de jours compte une année normale ?",a:["360","365","366","364"],c:1,cat:"Culture générale"},
@@ -117,78 +130,147 @@ const questions=[
 
 let current=0,score=0,answered=false;
 let total=Number(localStorage.getItem("defi60points")||0);
+let currentUser=null;
 const $=id=>document.getElementById(id);
 
-function updatePoints(){
- $("totalPoints").textContent=total;
-}
+function updatePoints(){$("totalPoints").textContent=total;}
 function show(section){
  ["home","game","result"].forEach(id=>$(id).classList.add("hidden"));
  $(section).classList.remove("hidden");
 }
+function setAuthMessage(message){$("authMessage").textContent=message;}
+function validAuthFields(){
+ const email=$("email").value.trim();
+ const password=$("password").value;
+ if(!email || !password){setAuthMessage("Entre ton adresse e-mail et ton mot de passe.");return false;}
+ if(password.length<6){setAuthMessage("Le mot de passe doit contenir au moins 6 caractères.");return false;}
+ return true;
+}
+async function signUp(){
+ if(!validAuthFields())return;
+ const pseudo=$("pseudo").value.trim();
+ if(pseudo.length<3){setAuthMessage("Choisis un pseudo d'au moins 3 caractères.");return;}
+ setAuthMessage("Création du compte en cours...");
+ const {data,error}=await supabaseClient.auth.signUp({
+  email:$("email").value.trim(),password:$("password").value,
+  options:{data:{pseudo:pseudo}}
+ });
+ if(error){setAuthMessage("Erreur : "+error.message);return;}
+ if(data.session){
+  currentUser=data.user;
+  await saveProfile(pseudo);
+  updateAccountUI();
+  setAuthMessage("Compte créé et connecté. Bienvenue !");
+ }else{
+  setAuthMessage("Compte créé ! Vérifie ta boîte e-mail pour confirmer ton adresse, puis connecte-toi.");
+ }
+}
+async function signIn(){
+ if(!validAuthFields())return;
+ setAuthMessage("Connexion en cours...");
+ const {data,error}=await supabaseClient.auth.signInWithPassword({
+  email:$("email").value.trim(),password:$("password").value
+ });
+ if(error){setAuthMessage("Erreur : "+error.message);return;}
+ currentUser=data.user;
+ await ensureProfile();
+ updateAccountUI();
+ setAuthMessage("Connexion réussie. Bon jeu !");
+ loadGlobalLeaderboard();
+}
+async function saveProfile(pseudo){
+ if(!currentUser)return;
+ const {error}=await supabaseClient.from("profiles").insert({id:currentUser.id,pseudo:pseudo});
+ if(error && error.code !== "23505"){console.error(error);}
+}
+async function ensureProfile(){
+ if(!currentUser)return;
+ const {data,error}=await supabaseClient.from("profiles").select("id,pseudo").eq("id",currentUser.id).maybeSingle();
+ if(error){console.error(error);return;}
+ if(!data){
+  const pseudo=(currentUser.user_metadata && currentUser.user_metadata.pseudo) || currentUser.email.split("@")[0];
+  const result=await supabaseClient.from("profiles").insert({id:currentUser.id,pseudo:pseudo});
+  if(result.error)console.error(result.error);
+ }
+}
+function updateAccountUI(){
+ if(currentUser){
+  $("accountStatus").textContent="Connecté : "+(currentUser.email||"joueur");
+  $("authForms").classList.add("hidden");
+  $("logoutBtn").classList.remove("hidden");
+ }else{
+  $("accountStatus").textContent="Tu n'es pas connecté.";
+  $("authForms").classList.remove("hidden");
+  $("logoutBtn").classList.add("hidden");
+ }
+}
+async function signOut(){
+ const {error}=await supabaseClient.auth.signOut();
+ if(error){setAuthMessage("Erreur : "+error.message);return;}
+ currentUser=null;updateAccountUI();setAuthMessage("Tu es déconnecté.");
+}
 function startQuiz(){
- current=0;score=0;
- $("gamePoints").textContent=0;
- show("game");
- renderQuestion();
+ current=0;score=0;$("gamePoints").textContent=0;show("game");renderQuestion();
 }
 function renderQuestion(){
- answered=false;
- const q=questions[current];
+ answered=false;const q=questions[current];
  $("questionNumber").textContent=`Question ${current+1}/10`;
  $("progress").style.width=((current+1)/10*100)+"%";
- $("category").textContent="📚 "+q.cat;
- $("questionText").textContent=q.q;
- $("feedback").textContent="";
- $("nextBtn").classList.add("hidden");
- $("answers").innerHTML="";
+ $("category").textContent="📚 "+q.cat;$("questionText").textContent=q.q;
+ $("feedback").textContent="";$("nextBtn").classList.add("hidden");$("answers").innerHTML="";
  q.a.forEach((answer,index)=>{
-  const btn=document.createElement("button");
-  btn.className="answer";
+  const btn=document.createElement("button");btn.className="answer";
   btn.textContent=String.fromCharCode(65+index)+". "+answer;
-  btn.onclick=()=>checkAnswer(index,btn);
-  $("answers").appendChild(btn);
+  btn.onclick=()=>checkAnswer(index,btn);$("answers").appendChild(btn);
  });
 }
 function checkAnswer(index,btn){
- if(answered)return;
- answered=true;
- const q=questions[current];
- [...$("answers").children].forEach((b,i)=>{
-  b.disabled=true;
-  if(i===q.c)b.classList.add("correct");
- });
- if(index===q.c){
-  score+=10;
-  $("feedback").textContent="✅ Bonne réponse ! +10 points";
- }else{
-  btn.classList.add("wrong");
-  $("feedback").textContent="❌ Pas tout à fait. La bonne réponse est : "+q.a[q.c];
- }
+ if(answered)return;answered=true;const q=questions[current];
+ [...$("answers").children].forEach((b,i)=>{b.disabled=true;if(i===q.c)b.classList.add("correct");});
+ if(index===q.c){score+=10;$("feedback").textContent="✅ Bonne réponse ! +10 points";}
+ else{btn.classList.add("wrong");$("feedback").textContent="❌ Pas tout à fait. La bonne réponse est : "+q.a[q.c];}
  $("gamePoints").textContent=score;
  $("nextBtn").textContent=current===9?"Voir mon résultat →":"Question suivante →";
  $("nextBtn").classList.remove("hidden");
 }
 function nextQuestion(){
- current++;
- if(current<questions.length){
-  renderQuestion();
- }else{
-  finishQuiz();
- }
+ current++;if(current<questions.length)renderQuestion();else finishQuiz();
 }
-function finishQuiz(){
- total+=score;
- localStorage.setItem("defi60points",total);
+async function finishQuiz(){
+ total+=score;localStorage.setItem("defi60points",total);
  const history=JSON.parse(localStorage.getItem("defi60history")||"[]");
  history.push({score,date:new Date().toLocaleDateString("fr-FR")});
  history.sort((a,b)=>b.score-a.score);
  localStorage.setItem("defi60history",JSON.stringify(history.slice(0,5)));
  $("finalPoints").textContent=score;
  $("resultMessage").textContent=score===100?"Incroyable ! Score parfait !":score>=70?"Excellent travail ! Continue !":score>=40?"Bien joué ! Tu progresses !":"Continue à t'entraîner, tu vas progresser !";
- updatePoints();
- show("result");
- renderLeaderboard();
+ $("saveMessage").textContent="";
+ updatePoints();show("result");renderLeaderboard();
+ if(currentUser){
+  const {error}=await supabaseClient.from("scores").insert({user_id:currentUser.id,score:score});
+  if(error){$("saveMessage").textContent="Score non envoyé au classement : "+error.message;}
+  else{$("saveMessage").textContent="✅ Ton score a été enregistré dans le classement mondial !";loadGlobalLeaderboard();}
+ }else{
+  $("saveMessage").textContent="Connecte-toi pour enregistrer ton score dans le classement mondial.";
+ }
+}
+async function loadGlobalLeaderboard(){
+ const box=$("globalLeaderboard");box.innerHTML='<p class="muted">Chargement...</p>';
+ const {data:scores,error}=await supabaseClient.from("scores").select("user_id,score,created_at").order("score",{ascending:false}).limit(10);
+ if(error){box.innerHTML='<p class="muted">Impossible de charger le classement : '+escapeHTML(error.message)+'</p>';return;}
+ if(!scores || scores.length===0){box.innerHTML='<p class="muted">Aucun score mondial pour le moment. Connecte-toi et joue le premier défi !</p>';return;}
+ const ids=[...new Set(scores.map(s=>s.user_id))];
+ const {data:profiles}=await supabaseClient.from("profiles").select("id,pseudo").in("id",ids);
+ const names={};(profiles||[]).forEach(p=>names[p.id]=p.pseudo);
+ box.innerHTML=scores.map((s,i)=>{
+  const name=names[s.user_id]||"Joueur";
+  const date=new Date(s.created_at).toLocaleDateString("fr-FR");
+  const rank=["🥇","🥈","🥉"][i] || (i+1)+".";
+  return '<div class="player row"><span>'+rank+' '+escapeHTML(name)+'<br><small class="muted">'+date+'</small></span><b>'+s.score+' pts</b></div>';
+ }).join("");
+}
+function escapeHTML(value){
+ return String(value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 }
 function renderLeaderboard(){
  const history=JSON.parse(localStorage.getItem("defi60history")||"[]");
@@ -196,28 +278,28 @@ function renderLeaderboard(){
  history.map((h,i)=>`<div class="player row"><span>${["🥇","🥈","🥉","4️⃣","5️⃣"][i]} Défi ${i+1}<br><small class="muted">${h.date}</small></span><b>${h.score} pts</b></div>`).join("")
  :'<p class="muted">Joue ton premier quiz pour apparaître ici !</p>';
 }
-function goHome(){
- show("home");
- renderLeaderboard();
-}
+function goHome(){show("home");renderLeaderboard();}
 function shareApp(){
  const message="Découvre DÉFI 60 ! Joue au quiz et tente de battre mon score.";
- if(navigator.share){
-  navigator.share({title:"DÉFI 60",text:message,url:location.href}).catch(()=>{});
- }else{
-  window.open("https://wa.me/?text="+encodeURIComponent(message+" "+location.href),"_blank");
- }
+ if(navigator.share)navigator.share({title:"DÉFI 60",text:message,url:location.href}).catch(()=>{});
+ else window.open("https://wa.me/?text="+encodeURIComponent(message+" "+location.href),"_blank");
 }
 function shareScore(){
  const message="Je viens de marquer "+score+" points sur DÉFI 60 ! Peux-tu faire mieux ?";
- if(navigator.share){
-  navigator.share({title:"Mon score DÉFI 60",text:message,url:location.href}).catch(()=>{});
- }else{
-  window.open("https://wa.me/?text="+encodeURIComponent(message+" "+location.href),"_blank");
- }
+ if(navigator.share)navigator.share({title:"Mon score DÉFI 60",text:message,url:location.href}).catch(()=>{});
+ else window.open("https://wa.me/?text="+encodeURIComponent(message+" "+location.href),"_blank");
 }
-updatePoints();
-renderLeaderboard();
+async function initializeApp(){
+ updatePoints();renderLeaderboard();
+ const {data}=await supabaseClient.auth.getSession();
+ currentUser=data.session?data.session.user:null;
+ updateAccountUI();
+ supabaseClient.auth.onAuthStateChange((_event,session)=>{
+  currentUser=session?session.user:null;updateAccountUI();
+ });
+ loadGlobalLeaderboard();
+}
+initializeApp();
 </script>
 </body>
 </html>
