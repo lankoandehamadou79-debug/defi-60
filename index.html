@@ -48,7 +48,24 @@ function checkAnswer(i,btn){if(answered||quizEnded)return;answered=true;let q=qu
 function nextQuestion(){if(quizEnded)return;current++;if(current<questions.length&&secondsLeft>0)renderQuestion();else finishQuiz(secondsLeft<=0)}
 function quitQuiz(){if(confirm("Quitter le défi ? Ta partie ne sera pas enregistrée.")){clearInterval(timerInterval);quizEnded=true;goHome()}}
 async function finishQuiz(timeUp=false){if(quizEnded)return;quizEnded=true;clearInterval(timerInterval);total+=score;localStorage.setItem("defi60points",String(total));let h=JSON.parse(localStorage.getItem("defi60history")||"[]");h.push({score,date:new Date().toLocaleDateString("fr-FR")});h.sort((a,b)=>b.score-a.score);localStorage.setItem("defi60history",JSON.stringify(h.slice(0,5)));$("finalPoints").textContent=score;$("resultTitle").textContent=timeUp?"⏱️ Temps écoulé !":"🏆 Bravo !";$("resultSubtitle").textContent=timeUp?"Les 60 secondes sont terminées.":"Tu as terminé les questions.";$("resultMessage").textContent=score===100?"Incroyable ! Score parfait !":score>=70?"Excellent travail ! Continue !":score>=40?"Bien joué ! Tu progresses !":"Continue à t'entraîner !";$("saveMessage").textContent="";updatePoints();show("result");renderLeaderboard();if(currentUser&&supabaseClient){let {error}=await supabaseClient.from("scores").insert({user_id:currentUser.id,score});if(error)$("saveMessage").textContent="Score non envoyé au classement : "+error.message;else{$("saveMessage").textContent="✅ Ton score a été enregistré dans le classement mondial !";loadGlobalLeaderboard()}}else $("saveMessage").textContent="Connecte-toi pour enregistrer ton score dans le classement mondial."}
-async function loadGlobalLeaderboard(){let box=$("globalLeaderboard");if(!supabaseClient){box.innerHTML='<p class="muted">Classement indisponible pour le moment. Tu peux jouer quand même !</p>';return}box.innerHTML='<p class="muted">Chargement...</p>';try{let {data:scores,error}=await supabaseClient.from("scores").select("user_id,score,created_at").order("score",{ascending:false}).limit(10);if(error||!scores){box.innerHTML='<p class="muted">Classement indisponible pour le moment. Réessaie plus tard.</p>';return}if(!scores.length){box.innerHTML='<p class="muted">Aucun score mondial pour le moment. Sois le premier !</p>';return}let ids=[...new Set(scores.map(s=>s.user_id))],{data:profiles}=await supabaseClient.from("profiles").select("id,pseudo").in("id",ids),names={};(profiles||[]).forEach(p=>names[p.id]=p.pseudo);box.innerHTML=scores.map((s,i)=>'<div class="player row"><span>'+(["🥇","🥈","🥉"][i]||(i+1)+".")+' '+escapeHTML(names[s.user_id]||"Joueur")+'<br><small class="muted">'+new Date(s.created_at).toLocaleDateString("fr-FR")+'</small></span><b>'+s.score+' pts</b></div>').join("")}catch(e){box.innerHTML='<p class="muted">Classement indisponible. Vérifie ta connexion.</p>'}}
+async function loadGlobalLeaderboard(){
+ let box=$("globalLeaderboard");
+ if(!supabaseClient){box.innerHTML='<p class="muted">Classement indisponible pour le moment. Tu peux jouer quand même !</p>';return}
+ box.innerHTML='<p class="muted">Chargement...</p>';
+ try{
+  let {data:stats,error}=await supabaseClient.from("leaderboard_stats").select("user_id,best_score,games_played").order("best_score",{ascending:false}).limit(10);
+  if(error||!stats){box.innerHTML='<p class="muted">Impossible de charger les statistiques. Réessaie plus tard.</p>';return}
+  if(!stats.length){box.innerHTML='<p class="muted">Aucun score mondial pour le moment. Sois le premier !</p>';return}
+  let ids=stats.map(s=>s.user_id);
+  let {data:profiles,error:profileError}=await supabaseClient.from("profiles").select("id,pseudo").in("id",ids);
+  if(profileError){box.innerHTML='<p class="muted">Impossible de charger les pseudos. Réessaie plus tard.</p>';return}
+  let names={};(profiles||[]).forEach(p=>names[p.id]=p.pseudo);
+  box.innerHTML=stats.map((s,i)=>{
+   let rank=["🥇","🥈","🥉"][i]||(i+1)+".";
+   return '<div class="player row"><span>'+rank+' '+escapeHTML(names[s.user_id]||"Joueur")+'<br><small class="muted">Meilleur score : '+s.best_score+' pts · Parties jouées : '+s.games_played+'</small></span><b>'+s.best_score+' pts</b></div>';
+  }).join("");
+ }catch(e){box.innerHTML='<p class="muted">Classement indisponible. Vérifie ta connexion.</p>'}
+}
 function escapeHTML(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function renderLeaderboard(){let h=JSON.parse(localStorage.getItem("defi60history")||"[]");$("leaderboard").innerHTML=h.length?h.map((x,i)=>'<div class="player row"><span>'+["🥇","🥈","🥉","4️⃣","5️⃣"][i]+' Défi '+(i+1)+'<br><small class="muted">'+escapeHTML(x.date)+'</small></span><b>'+x.score+' pts</b></div>').join(""):'<p class="muted">Joue ton premier quiz pour apparaître ici !</p>'}
 function goHome(){clearInterval(timerInterval);show("home");renderLeaderboard()}
